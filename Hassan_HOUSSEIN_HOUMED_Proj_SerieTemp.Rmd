@@ -1,0 +1,442 @@
+---
+title: "Projet à rendre Serie Temporelle"
+author: "Hassan HOUSSEIN HOUMED"
+date: "09/02/2022"
+output:
+  html_document: default
+  pdf_document: default
+---
+
+```{r}
+library(timeSeries)
+library(forecast)
+```
+
+# Question 1
+
+```{r}
+d <- scan(file="serie_11.dat")
+proj_serie <- ts(d,start=c(2001,1),end=c(2017,12),frequency=12)
+```
+
+```{r}
+ts.plot(proj_serie,main="representation de la série temporelle")
+```
+
+```{r}
+monthplot(proj_serie,main="representation de la serie temporelle \n en regroupant les valeurs par mois")
+```
+
+```{r}
+seasonplot(proj_serie,main="Seasonal Plot")
+```
+
+```{r}
+serie_ret=rev(proj_serie)
+lag.plot(serie_ret,12,layout=c(4,3))
+```
+
+Il y a une corrélation positive entre les variables c'est à dire si les valeurs d'une variable augmente alors les valeurs de l'autre variable va augmenté aussi.
+
+# Question 2
+
+#### Extraire la tendance
+
+```{r}
+
+w <- NA
+m <- c()
+
+
+mobile=function(x,k){
+  for(t in k){
+ f <- (1/12)*(((1/2)*x[t-6])+x[t-5]+x[t-4]+x[t-3]+x[t-2]+x[t-1]+x[t]+x[t+1]+x[t+2]+x[t+3]+x[t+4]+x[t+5]+((1/2)*x[t+6]))
+  }
+  return(f)
+}
+
+
+for(i in c(1:6,199:204)){
+  for(j in c(7:198)){
+    m[i] <- w
+    m[j] <- mobile(proj_serie,j)
+  }
+}
+
+tendance = m
+```
+
+#### **Extraire la saisonnalité**
+
+```{r,warning=FALSE}
+
+s_barre <- proj_serie - tendance
+
+n <- as.vector(s_barre)
+
+tab <- matrix(n,ncol=12,nrow=17,byrow=TRUE)
+
+s1 <- 0
+
+for(i in 2:17){
+  for(j in 1){
+    
+  s1 <- s1 +  tab[i,j]/16
+  
+  }
+}
+
+s2 <- 0
+
+for(i in 2:17){
+  for(j in 2){
+    
+  s2 <- s2 +  tab[i,j]/16
+  
+  }
+}
+
+s3 <- 0
+
+for(i in 2:17){
+  for(j in 3){
+    
+  s3 <- s3 +  tab[i,j]/16
+  
+  }
+}
+
+s4 <- 0
+
+for(i in 2:17){
+  for(j in 4){
+    
+  s4 <- s4 +  tab[i,j]/16
+  
+  }
+}
+
+s5 <- 0
+
+for(i in 2:17){
+  for(j in 5){
+    
+  s5 <- s5 +  tab[i,j]/16
+  
+  }
+}
+
+s6 <- 0
+
+for(i in 2:17){
+  for(j in 6){
+    
+  s6 <- s6 +  tab[i,j]/16
+  
+  }
+}
+
+s7 <- 0
+
+for(i in 1:16){
+  for(j in 7){
+    
+  s7 <- s7 +  tab[i,j]/16
+  
+  }
+}
+
+s8 <- 0
+
+for(i in 1:16){
+  for(j in 8){
+    
+  s8 <- s8 +  tab[i,j]/16
+  
+  }
+}
+
+s9 <- 0
+
+for(i in 1:16){
+  for(j in 9){
+    
+  s9 <- s9 +  tab[i,j]/16
+  
+  }
+}
+
+s10 <- 0
+
+for(i in 1:16){
+  for(j in 10){
+    
+  s10 <- s10 +  tab[i,j]/16
+  
+  }
+}
+
+s11 <- 0
+
+for(i in 1:16){
+  for(j in 11){
+    
+  s11 <- s11 +  tab[i,j]/16
+  
+  }
+}
+
+s12 <- 0
+
+for(i in 1:16){
+  for(j in 12){
+    
+  s12 <- s12 +  tab[i,j]/16
+  
+  }
+}
+
+Saison <- c(s1,s2,s3,s4,s5,s6,s7,s8,s9,s10,s11,s12)
+
+matr <- rep(c(s1,s2,s3,s4,s5,s6,s7,s8,s9,s10,s11,s12),17)
+
+mator <- matrix(matr,nc=12,nr=17,byrow=TRUE)
+
+saisonalite <- matrix(NA,ncol=12,nrow=17,byrow=TRUE)
+
+for(i in 1:17){
+  for(j in 1:12){
+    
+    saisonalite[i,j] <- mator[i,j]
+    
+  }
+}
+```
+
+#### **Extraire le residus**
+
+```{r}
+residus <- proj_serie - tendance - matr
+plot(residus,main="Representation des résidus")
+```
+
+je vais vérifié si j'ai bien fais l'extraction de mes residus en utilisant la fonction de decompose
+
+```{r}
+dec <- decompose(proj_serie)
+plot(dec$random)
+lines(residus,col="red")
+```
+
+Maintenant, on va décomposer notre residus en deux parties, une partie pour estimer notre modèle et une partie pour faire la prévision.
+
+```{r}
+residus_appren <- window(residus,start=c(2001,7),end=c(2016,12))
+residus_valid <- window(residus,start=c(2017,1),end=c(2017,6))
+```
+
+Je vais vérifié si mon residus est stationnaire ou pas
+
+```{r}
+acf(na.omit(residus_appren),main="Autocorrélogramme")
+```
+
+Je remarque que mon residus est stationnaire d'après le graphique ci-dessus.
+
+```{r}
+pacf(na.omit(residus_appren),main="Autocorrélogramme Partiel")
+```
+
+# Question 3
+
+Maintenant, je veux essayer de proposer un modèle ARMA pour le residus.
+
+**Modèle 1**
+
+```{r}
+model1 <- arima(residus_appren,order=c(3,0,5))
+```
+
+**Blancheur des residus**
+
+```{r}
+acf(model1$residuals)
+```
+
+Je constate que le bruit de cette modèle est blanc.
+
+**Intervalles des confiances**
+
+```{r}
+confint(model1)
+```
+
+Je remarque que toutes les paramètres de mon modèle ne sont pas significatifs donc je veux essayer d'éstimer une autre modèle.
+
+**Modele 2**
+
+```{r}
+model2 <- arima(residus_appren,order=c(3,0,3))
+```
+
+**Blancheur des residus**
+
+```{r}
+acf(model2$residuals)
+```
+
+Je constate que le bruit de cette modèle est blanc.
+
+**Intervalles des Confiances**
+
+```{r}
+confint(model2)
+```
+
+Je remarque que certains paramètres de mon modèle ne sont pas significatifs donc je veux réessayer d'éstimer une autre modèle.
+
+**Modèle 3**
+
+```{r}
+model3 <- arima(residus_appren,order=c(3,0,2))
+```
+
+**Blancheur des residus**
+
+```{r}
+acf(model3$residuals)
+```
+
+Je constate que le bruit de cette modèle est blanc.
+
+**Intervalles des Confiances**
+
+```{r}
+confint(model3)
+```
+
+Je remarque que toutes les paramètres de mon modèle ne sont pas significatifs donc je veux réessayer d'éstimer une autre modèle.
+
+**Modèle 4**
+
+```{r}
+model4 <- arima(residus_appren,order=c(3,0,1))
+```
+
+**Blancheur des residus**
+
+```{r}
+acf(model4$residuals)
+```
+
+Je constate que le bruit de cette modèle est blanc.
+
+**Intervalles des Confiances**
+
+```{r}
+confint(model4)
+```
+
+Je remarque qu'une seule paramètre de mon modèle n'est pas significatif mais tout les autres sont significatifs donc je veux réessayer d'estimer une autre modèle plus meilleur que celui là.
+
+**Modèle 5**
+
+```{r}
+model5 <- arima(residus_appren,order=c(2,0,3))
+```
+
+**Blancheur des residus**
+
+```{r}
+acf(model5$residuals)
+```
+
+Je constate que le bruit de cette modèle est blanc.
+
+**Intervalles des Confiances**
+
+```{r}
+confint(model5)
+```
+
+Je remarque que toutes les paramètres de cette modèle sont significatifs mais comme même je veux réessayer de trouver d'autres modèles qui ont des paramètres qui sont tous significatifs.
+
+**Modèle 6**
+
+```{r}
+model6 <- arima(residus_appren,order=c(2,0,4))
+```
+
+**Blancheur des residus**
+
+```{r}
+acf(model6$residuals)
+```
+
+Je constate que le bruit de cette modèle est blanc.
+
+**Intervalles des Confiances**
+
+```{r}
+confint(model6)
+```
+
+Je remarque que toutes les paramètres de cette modèle sont significatifs mais comme même je veux réessayer de trouver d'autres modèles qui ont des paramètres qui sont tous significatifs.
+
+**Modèle 7**
+
+```{r}
+model7 <- arima(residus_appren,order=c(1,0,3))
+```
+
+**Blancheur des residus**
+
+```{r}
+acf(model7$residuals)
+```
+
+Je constate que le bruit de cette modèle est blanc.
+
+**Intervalles des Confiances**
+
+```{r}
+confint(model7)
+```
+
+Je remarque que toutes les paramètres de cette modèle sont significatifs aussi.
+
+Pour choisir le meilleur modèle parmi les modèles dont le bruit est blanc et dont les paramètres sont tous significatifs , je vais utiliser le critère d'AIC et choisir de travailler dans la suite avec le modèle qui a le plus pétit valeur d'AIC.
+
+```{r}
+AIC(model5)
+AIC(model6)
+AIC(model7)
+```
+
+D'après le critère d'AIC , je choisis de travailler dans la suite avec un modèle ARMA(2,4) qui est le modèle n°6.
+
+# Question 4
+
+```{r}
+prevision <- predict(model6,n.ahead=6,ci=TRUE)
+ecart <- var(prevision$pred - residus_valid)
+```
+
+```{r}
+proj_serie2 <- window(proj_serie,start=c(2001,1),end=c(2016,12))
+proj_serie3 <- window(proj_serie,start=c(2017,1),end=c(2017,6))
+
+t3 <- ts(tendance,start=c(2001,1),end=c(2017,12),frequency = 12)
+
+t5 <- window(t3,start=c(2017,1),end=c(2017,6))
+
+t6 <- c(s1,s2,s3,s4,s5,s6)
+
+somme <- prevision$pred + t5 + t6
+
+plot.ts(proj_serie2,type='o')
+lines(proj_serie3,col='blue',type='o')
+lines(somme,col='green',type='o')
+```
+
+Je constate que mon modèle a une qualité de prédiction qui est globalement pertinente.
